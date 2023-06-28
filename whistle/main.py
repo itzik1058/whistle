@@ -1,13 +1,11 @@
 from contextlib import asynccontextmanager
-from io import BytesIO
 
+import ffmpeg
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from librosa import resample
-from numpy import array, float32, int16
-from pydub import AudioSegment
+from numpy import float32, frombuffer
 from whispercpp import Whisper
 
 model: Whisper | None = None
@@ -16,7 +14,7 @@ model: Whisper | None = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global model
-    model = Whisper.from_pretrained("tiny.en")
+    model = Whisper.from_pretrained("tiny")
     yield
     model = None
 
@@ -42,17 +40,13 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_bytes()
-            print("received", len(data))
             try:
-                segment: AudioSegment = AudioSegment.from_file(BytesIO(data))
-                audio = (
-                    array(
-                        segment.get_array_of_samples(),
-                        dtype=int16,
-                    ).astype(float32)
-                    / 32768
+                stdout, _ = (
+                    ffmpeg.input("pipe:", threads=0)
+                    .output("-", format="f32le", ac=1, ar=16000)
+                    .run(input=data, capture_stdout=True, capture_stderr=True)
                 )
-                audio = resample(audio, orig_sr=segment.frame_rate, target_sr=16_000)
+                audio = frombuffer(stdout, float32)
                 transcript = model.transcribe(audio)
                 print(transcript)
                 await websocket.send_text(transcript)
