@@ -1,12 +1,13 @@
+import asyncio
 from contextlib import asynccontextmanager
 
-import ffmpeg
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from numpy import float32, frombuffer
 from whispercpp import Whisper
+
+from whistle.utils import transform_audio
 
 model: Whisper | None = None
 
@@ -40,19 +41,12 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_bytes()
+            loop = asyncio.get_running_loop()
             try:
-                stdout, _ = (
-                    ffmpeg.input("pipe:", threads=0)
-                    .output("-", format="f32le", ac=1, ar=16000)
-                    .run(input=data, capture_stdout=True, capture_stderr=True)
-                )
-                audio = frombuffer(stdout, float32)
-                transcript = model.transcribe(audio)
+                audio = await loop.run_in_executor(None, transform_audio, data)
+                transcript = await loop.run_in_executor(None, model.transcribe, audio)
                 print(transcript)
                 await websocket.send_text(transcript)
-            except KeyboardInterrupt:
-                await websocket.close()
-                return
             except Exception as e:
                 print(e)
     except WebSocketDisconnect:

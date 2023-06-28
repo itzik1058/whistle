@@ -35,7 +35,7 @@
                 const received = message.data
                 if (received) {
                     console.log(received)
-                    document.querySelector('#transcript').textContent += ' ' + received
+                    document.querySelector('#transcript').textContent = received
                 }
             }
             socket.onclose = () => {
