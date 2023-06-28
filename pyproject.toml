@@ -1,0 +1,34 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "whistle"
+version = "0.1.0"
+description = ""
+authors = ["itzik <itzik@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+whispercpp = "^0.0.17"
+fastapi = "^0.98.0"
+jinja2 = "^3.1.2"
+pydub = "^0.25.1"
+librosa = "^0.10.0.post2"
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+uvicorn = { extras = ["standard"], version = "^0.22.0" }
+poetry = "^1.5.1"
+black = "^23.3.0"
+ruff = "^0.0.275"
+mypy = "^1.4.1"
+pre-commit = "^3.3.3"
+
+[tool.mypy]
+[[tool.mypy.overrides]]
+module = ["whispercpp", "pydub"]
+ignore_missing_imports = true
